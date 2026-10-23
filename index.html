@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>文章跟打器（抄寫練習）</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  </head>
+  <body>
+    <h1>文 章 跟 打 器</h1>
+    <div class="hint">
+      可直接打字；標點與空白自動跳過。方向鍵移動、Backspace／Delete
+      刪字、Home／End 跳行首行尾。底稿字不會被刪。
+    </div>
+
+    <div class="paper">
+      <div class="paper-header">
+        <span>文章抄寫練習</span>
+        <span>
+          <span id="progressLabel">0 / 0</span>
+          <span class="save-status" id="saveStatus"></span>
+        </span>
+      </div>
+
+      <div class="article-title" id="articleTitle"></div>
+
+      <div id="grid" tabindex="-1"></div>
+
+      <div class="controls">
+        <select id="textSelect"></select>
+        <button id="addBook">＋ 新增書籍</button>
+        <button id="addArticle">＋ 新增文章</button>
+        <label
+          >分段方式
+          <select id="paraModeSelect">
+            <option value="blank" selected>空行分段</option>
+            <option value="sentence">句末分段</option>
+          </select>
+        </label>
+        <label
+          ><input type="checkbox" id="toggleHint" checked /> 顯示底稿字</label
+        >
+        <label
+          ><input type="checkbox" id="toggleVertical" /> 直書（右→左）</label
+        >
+        <label
+          ><input type="checkbox" id="toggleStats" />
+          顯示統計（正確／錯誤／速度）</label
+        >
+        <label
+          >閒置暫停
+          <select id="idleSelect">
+            <option value="3000">3 秒</option>
+            <option value="5000" selected>5 秒</option>
+            <option value="10000">10 秒</option>
+            <option value="30000">30 秒</option>
+            <option value="0">關閉</option>
+          </select>
+        </label>
+        <label
+          >字體
+          <select id="fontFamilySelect">
+            <option value="sans">黑體</option>
+            <option value="serif" selected>宋體</option>
+            <option value="kai">楷體</option>
+          </select>
+        </label>
+        <label
+          >字級
+          <input
+            type="range"
+            id="fontRange"
+            min="14"
+            max="40"
+            step="1"
+            value="22"
+          />
+          <span class="fontSizeVal" id="fontSizeVal">22px</span>
+        </label>
+        <button class="primary" id="restart">重新開始本篇</button>
+        <button id="editCustom" disabled>修改自訂文章</button>
+        <button id="clearSaved">清除全部進度</button>
+      </div>
+
+      <div class="stats">
+        <span class="progress">進度：<b id="statDone">0</b></span>
+        <span class="ok">正確：<b id="statOk">0</b></span>
+        <span class="err">錯誤：<b id="statErr">0</b></span>
+        <span class="speed"
+          >速度：<b id="statSpeed">0</b> 字/分
+          <span class="timer-state" id="timerState"></span>
+        </span>
+      </div>
+    </div>
+
+    <!-- 自訂文章對話框 -->
+    <dialog id="customDialog" class="custom-dialog">
+      <form method="dialog" class="custom-form">
+        <h2>自訂文章</h2>
+
+        <label class="field">
+          <span>標題</span>
+          <input
+            type="text"
+            id="customTitleInput"
+            placeholder="請輸入文章標題"
+            maxlength="40"
+          />
+        </label>
+
+        <label class="field">
+          <span>內容</span>
+          <textarea
+            id="customBodyInput"
+            rows="12"
+            placeholder="請貼上文章內容（用空行分段；可含標點）"
+          ></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button type="button" id="customCancel">取消</button>
+          <button type="submit" class="primary" id="customConfirm">確定</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- 新增書籍對話框 -->
+    <dialog id="bookDialog" class="custom-dialog">
+      <form method="dialog" class="custom-form">
+        <h2>新增書籍</h2>
+
+        <label class="field">
+          <span>方式</span>
+          <select id="bookModeSelect">
+            <option value="manual" selected>手動輸入書名（空書）</option>
+            <option value="json">從 JSON 網址載入</option>
+          </select>
+        </label>
+
+        <label class="field" id="bookManualField">
+          <span>書名</span>
+          <input
+            type="text"
+            id="bookTitleInput"
+            placeholder="例如：論語、黃帝內經"
+            maxlength="40"
+          />
+        </label>
+
+        <label class="field" id="bookUrlField" style="display: none">
+          <span>JSON 網址</span>
+          <input
+            type="text"
+            id="bookUrlInput"
+            placeholder="https://example.com/books.json"
+          />
+        </label>
+
+        <div class="dialog-actions">
+          <button type="button" id="bookCancel">取消</button>
+          <button type="submit" class="primary" id="bookConfirm">確定</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- 新增文章對話框 -->
+    <dialog id="newArticleDialog" class="custom-dialog">
+      <form method="dialog" class="custom-form">
+        <h2>新增文章</h2>
+
+        <label class="field">
+          <span>所屬書籍</span>
+          <select id="articleBookSelect"></select>
+        </label>
+
+        <label class="field">
+          <span>文章標題</span>
+          <input
+            type="text"
+            id="articleTitleInput"
+            placeholder="請輸入文章標題"
+            maxlength="40"
+          />
+        </label>
+
+        <label class="field">
+          <span>內容</span>
+          <textarea
+            id="articleBodyInput"
+            rows="12"
+            placeholder="請貼上文章內容（用空行分段；可含標點）"
+          ></textarea>
+        </label>
+
+        <div class="dialog-actions">
+          <button type="button" id="newArticleCancel">取消</button>
+          <button type="submit" class="primary" id="newArticleConfirm">
+            確定
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
